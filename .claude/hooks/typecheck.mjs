@@ -21,7 +21,7 @@ try {
 }
 
 try {
-  run('pnpm -s typecheck');
+  run('pnpm --silent typecheck');
 } catch (error) {
   const output = `${error.stdout ?? ''}${error.stderr ?? ''}`.trim();
   const tail = output.split('\n').slice(-40).join('\n');

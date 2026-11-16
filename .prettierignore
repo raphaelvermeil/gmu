@@ -1,0 +1,3 @@
+pnpm-lock.yaml
+apps/api/src/db/migrations/meta
+expo-env.d.ts

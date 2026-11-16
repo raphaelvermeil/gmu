@@ -7,3 +7,4 @@ dist/
 .expo/
 supabase/.temp/
 coverage/
+expo-env.d.ts

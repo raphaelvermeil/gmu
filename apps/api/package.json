@@ -1,0 +1,31 @@
+{
+  "name": "@gear/api",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./app": "./src/http/app.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p .",
+    "test": "vitest run",
+    "start": "node src/server.ts",
+    "db:migrate": "node src/db/migrate.ts",
+    "db:local": "node src/db/local-setup.ts"
+  },
+  "dependencies": {
+    "@gear/shared": "workspace:*",
+    "@hono/node-server": "2.1.8",
+    "drizzle-orm": "0.45.4",
+    "hono": "4.13.17",
+    "jose": "6.2.17",
+    "pg": "8.23.1",
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@types/node": "24.19.2",
+    "@types/pg": "8.23.1",
+    "drizzle-kit": "0.31.11",
+    "typescript": "6.0.3",
+    "vitest": "5.1.0"
+  }
+}
