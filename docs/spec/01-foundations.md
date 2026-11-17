@@ -9,7 +9,7 @@
 Claude cannot do these, and should not try:
 
 - Create two Supabase projects in Canada Central: staging and production. Local development uses `supabase start`.
-- Turn on Apple sign-in, Google sign-in and an SMS provider in Supabase Auth. Also turn on phone confirmations. With them off, Auth marks a new phone number as confirmed with no SMS code at all.
+- In Supabase Auth, set up email sending through Twilio SendGrid (SMTP) and SMS through Twilio. Also turn on phone confirmations. With them off, Auth marks a new phone number as confirmed with no SMS code at all.
 - After the first migration on staging and on production, give the `api` role a password: `alter role api with login password '...'`. Put the resulting connection string in Fly as `DATABASE_URL`.
 - Create the Fly.io app in Toronto and the EAS project.
 - Put secrets in Fly, EAS and GitHub. None go in the repository or in a file on your laptop.
@@ -74,7 +74,7 @@ Claude cannot do these, and should not try:
 ## Done when
 
 - [ ] `pnpm typecheck`, `pnpm lint` and `pnpm test` pass locally and in CI.
-- [ ] You have signed in with email, Apple and Google, on a phone and on web.
+- [ ] You have signed in with email, on a phone and on web.
 - [ ] You have verified a phone number by SMS and seen `phone_verified_at` set.
 - [ ] A merge to main migrates and deploys staging.
 
@@ -87,5 +87,5 @@ Confirm or change these before starting.
 - **G1.3 Which Postgres role the API connects as.** Decided: migrations run as `postgres`, which owns every table. The API connects as a dedicated `api` login role with `BYPASSRLS` and explicit grants per table. It owns nothing. In step 5, `rental_events` becomes append-only by granting `api` only `SELECT` and `INSERT` on it.
 - **G1.4 One migration system.** Default: all SQL lives in `apps/api/src/db/migrations`, including storage buckets and the realtime policy. `supabase/` holds only the local stack's `config.toml`. The proposal lists buckets and the realtime policy under `supabase/` without saying how they are applied.
 - **G1.5 Placement.** `/healthz` and JSON logging are built here. The proposal lists them under operations without naming a step.
-- **G1.7 Sign-in flows.** Decided: email sign-in uses a 6-digit code (`signInWithOtp({ email })`, then `verifyOtp({ type: 'email' })`), with no password and no magic link. Apple and Google use browser OAuth (`signInWithOAuth` with `expo-web-browser`) on every platform. On iOS and Android the session is split across SecureStore keys of under 2 KB each.
+- **G1.7 Sign-in flows.** Decided: email sign-in uses a 6-digit code (`signInWithOtp({ email })`, then `verifyOtp({ type: 'email' })`), with no password and no magic link. Apple and Google sign-in are postponed to a later step. On iOS and Android the session is split across SecureStore keys of under 2 KB each.
 - **G1.6 Routes.** The `/v1/me` routes are not in the proposal's endpoint table.

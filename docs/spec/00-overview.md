@@ -42,10 +42,10 @@ Every step keeps these true. A change that breaks one is wrong even when its tes
 | API | Node.js, Hono, Zod validation, REST-style JSON, Hono's `hc` typed client |
 | Database | PostgreSQL with PostGIS and btree_gist, on Supabase in Canada Central |
 | Data access | Drizzle ORM 0.45 (not the 1.0 release candidate), SQL migrations, raw SQL for geo queries and constraints |
-| Auth | Supabase Auth: email, Apple and Google sign-in; an SMS code for phone verification |
+| Auth | Supabase Auth: email sign-in (Apple and Google later); an SMS code through Twilio for phone verification |
 | Files | Supabase Storage: a public bucket for listing photos, a private bucket for handover photos |
 | Live updates | Supabase Realtime Broadcast, one private channel per user, used only as a "refetch" signal |
-| Notifications | Expo Push for iOS and Android, Resend for email, the `notifications` table as the inbox |
+| Notifications | Expo Push for iOS and Android, Twilio SendGrid for email, the `notifications` table as the inbox |
 | Jobs | pg-boss in the same Postgres. The worker runs inside the API process. |
 | Hosting | API on Fly.io in Toronto. Web on EAS Hosting. Mobile through EAS Build, Submit and Update. |
 | Monitoring | Sentry, structured JSON logs, an uptime check |
@@ -121,7 +121,7 @@ These specs use the assumption in the middle column. If a decision changes, edit
 | pg-boss or one scheduled function | pg-boss | 02, 05, 06, 07, 08 |
 | Server-rendered or static web build | Server-rendered | 01, 03 |
 | QR code or typed code only | QR with a typed code as fallback | 07 |
-| Sign-in methods | Email, Apple, Google | 01 |
+| Sign-in methods | Email now; Apple and Google later | 01 |
 | Categories and search depth | Two-level categories, size attributes, keyword search, pagination | 02, 03 |
 | Photo pipeline | Resize in the app, verify in a worker job | 02, 07 |
 | Environments | Local, staging, production | 01 |

@@ -7,7 +7,7 @@
 ## In scope
 
 - The `notifications` table and the single `notify()` function.
-- Push through Expo, email through Resend, with delivery jobs.
+- Push through Expo, email through Twilio SendGrid, with delivery jobs.
 - Realtime events on one private channel per user.
 - Conversations and messages.
 - Calls to `notify()`, realtime and system messages added inside `transitionRental` from step 5.
@@ -78,7 +78,7 @@ Chat:
 - Two requests that create the same pair at the same time end with one conversation.
 - Channel access: user A cannot subscribe to `user:B`. Run this against the local Supabase stack.
 - Payloads: no realtime payload, push or email contains an address or a coordinate, and realtime payloads contain ids only.
-- Delivery: a failed send is retried. A token reported invalid is deleted. Fake the Expo and Resend HTTP calls, not the database.
+- Delivery: a failed send is retried. A token reported invalid is deleted. Fake the Expo and SendGrid HTTP calls, not the database.
 - Thread paging returns every message once.
 - A transition writes its system message in the same transaction as the status change.
 

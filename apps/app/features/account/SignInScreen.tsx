@@ -4,7 +4,7 @@ import { Button } from '../../components/Button';
 import { Screen } from '../../components/Screen';
 import { TextField } from '../../components/TextField';
 import { theme } from '../../components/theme';
-import { sendEmailCode, signInWithProvider, verifyEmailCode } from './sign-in';
+import { sendEmailCode, verifyEmailCode } from './sign-in';
 
 type Step = { kind: 'email' } | { kind: 'code'; email: string };
 
@@ -51,19 +51,6 @@ export function SignInScreen() {
               })
             }
           />
-          <Text style={styles.or}>or</Text>
-          <Button
-            title="Continue with Apple"
-            variant="secondary"
-            disabled={busy}
-            onPress={() => run(() => signInWithProvider('apple'))}
-          />
-          <Button
-            title="Continue with Google"
-            variant="secondary"
-            disabled={busy}
-            onPress={() => run(() => signInWithProvider('google'))}
-          />
         </>
       ) : (
         <>
@@ -104,7 +91,6 @@ export function SignInScreen() {
 }
 
 const styles = StyleSheet.create({
-  or: { textAlign: 'center', color: theme.color.muted },
   hint: { color: theme.color.muted, fontSize: theme.font.body },
   error: { color: theme.color.danger },
 });
