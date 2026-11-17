@@ -109,6 +109,13 @@ Do not build these, even partly, unless a spec file asks for them:
 - Identity document checks
 - A second currency or a second city
 
+## Postponed until the owner says so
+
+These are in the MVP but switched off for now. Do not build, configure or work around them until the owner asks.
+
+- **Apple and Google sign-in.** Email by 6-digit code is the only sign-in method. The app has no Apple or Google buttons and does not depend on `expo-web-browser`. When they come back, they use browser OAuth on every platform (G1.7).
+- **SMS on hosted projects.** The phone verification code (`POST /v1/me/phone`, the profile screen's phone section) is built and works on the local stack, which has a test number: `+15145550100`, code `123456`. Staging and production have no SMS provider yet; Twilio comes later, with phone confirmations turned on. Until then, nobody can verify a phone on staging, so R2.7 (publishing a listing) and R5.5 (requesting a rental) cannot be met there. Test those rules on the local stack. Do not add a bypass, a flag or a fake verification; ask the owner if a staging check needs a verified phone.
+
 ## Decisions still open
 
 These specs use the assumption in the middle column. If a decision changes, edit the files in the last column before building them.
