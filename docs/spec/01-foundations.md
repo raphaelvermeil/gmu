@@ -9,7 +9,7 @@
 Claude cannot do these, and should not try:
 
 - Create two Supabase projects in Canada Central: staging and production. Local development uses `supabase start`.
-- In Supabase Auth, set up email sending through Twilio SendGrid (SMTP) and SMS through Twilio. Also turn on phone confirmations. With them off, Auth marks a new phone number as confirmed with no SMS code at all.
+- In Supabase Auth, set up email sending through Resend (SMTP). SMS through Twilio is postponed; when it is added, also turn on phone confirmations. With them off, Auth marks a new phone number as confirmed with no SMS code at all.
 - After the first migration on staging and on production, give the `api` role a password: `alter role api with login password '...'`. Put the resulting connection string in Fly as `DATABASE_URL`.
 - Create the Fly.io app in Toronto and the EAS project.
 - Put secrets in Fly, EAS and GitHub. None go in the repository or in a file on your laptop.
@@ -75,7 +75,7 @@ Claude cannot do these, and should not try:
 
 - [ ] `pnpm typecheck`, `pnpm lint` and `pnpm test` pass locally and in CI.
 - [ ] You have signed in with email, on a phone and on web.
-- [ ] You have verified a phone number by SMS and seen `phone_verified_at` set.
+- [ ] You have verified a phone number by SMS and seen `phone_verified_at` set. On the local stack only; on staging this waits for the SMS provider.
 - [ ] A merge to main migrates and deploys staging.
 
 ## Gaps filled

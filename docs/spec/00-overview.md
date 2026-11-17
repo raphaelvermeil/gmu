@@ -42,10 +42,10 @@ Every step keeps these true. A change that breaks one is wrong even when its tes
 | API | Node.js, Hono, Zod validation, REST-style JSON, Hono's `hc` typed client |
 | Database | PostgreSQL with PostGIS and btree_gist, on Supabase in Canada Central |
 | Data access | Drizzle ORM 0.45 (not the 1.0 release candidate), SQL migrations, raw SQL for geo queries and constraints |
-| Auth | Supabase Auth: email sign-in (Apple and Google later); an SMS code through Twilio for phone verification |
+| Auth | Supabase Auth: email sign-in (Apple and Google later); an SMS code through Twilio for phone verification (provider set up later) |
 | Files | Supabase Storage: a public bucket for listing photos, a private bucket for handover photos |
 | Live updates | Supabase Realtime Broadcast, one private channel per user, used only as a "refetch" signal |
-| Notifications | Expo Push for iOS and Android, Twilio SendGrid for email, the `notifications` table as the inbox |
+| Notifications | Expo Push for iOS and Android, Resend for email, the `notifications` table as the inbox |
 | Jobs | pg-boss in the same Postgres. The worker runs inside the API process. |
 | Hosting | API on Fly.io in Toronto. Web on EAS Hosting. Mobile through EAS Build, Submit and Update. |
 | Monitoring | Sentry, structured JSON logs, an uptime check |

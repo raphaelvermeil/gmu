@@ -14,4 +14,4 @@ paths:
 - 401 means no valid token. 403 means not this caller's resource. 409 means the wrong state.
 - Never log an address, an exact coordinate, a token, a handover code or a message body.
 - Thin wrappers for the queue, storage, push and email live in `src/platform` and hold no business rules.
-- In tests, fake the HTTP calls to outside services (Expo, SendGrid). Do not fake the database or `transitionRental()`.
+- In tests, fake the HTTP calls to outside services (Expo, Resend). Do not fake the database or `transitionRental()`.
