@@ -38,7 +38,7 @@ The spec is in `docs/spec/`. Read `docs/spec/00-overview.md`, then the file for 
 - No repository layer, no DI container, no base classes. Service functions take the transaction as their first argument.
 - No new dependency and no new package without asking first.
 - Tests run against the local Postgres. Never mock the database.
-- Work against the local Supabase stack only. Never run a command against a hosted project.
+- Work against the local Supabase stack only. Never run a command against a hosted project. Exception: during environment setup, Claude may run commands against the staging Supabase project, the staging Fly app, GitHub and EAS. Never production.
 
 ## How to work
 
