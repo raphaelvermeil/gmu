@@ -1,10 +1,13 @@
 import { randomUUID } from 'node:crypto';
 import { meSchema } from '@gear/shared';
 import { afterAll, describe, expect, it } from 'vitest';
+import { createAuthApi } from '../../platform/auth.ts';
 import {
   bearer,
   fakeAuthApi,
   jsonBody,
+  LOCAL_PUBLISHABLE_KEY,
+  LOCAL_SUPABASE_URL,
   ownerPool,
   signToken,
   testApp,
@@ -119,6 +122,19 @@ describe('POST /v1/me/phone (R1.11)', () => {
       sub,
     ]);
     expect(rows[0]?.phone_verified_at ?? null).toBeNull();
+    await db.$client.end();
+  });
+
+  it('returns 401 when Supabase Auth rejects a token the API accepts', async () => {
+    // The test signing key is valid for the API but unknown to the local Supabase Auth,
+    // the same situation as a session ended on another device.
+    const authApi = createAuthApi(LOCAL_SUPABASE_URL, LOCAL_PUBLISHABLE_KEY);
+    const { app, db, key } = await testApp({ authApi });
+    const token = await signToken(key);
+
+    const res = await app.request('/v1/me/phone', { method: 'POST', ...bearer(token) });
+    expect(res.status).toBe(401);
+    expect((await res.json()).code).toBe('unauthorized');
     await db.$client.end();
   });
 });

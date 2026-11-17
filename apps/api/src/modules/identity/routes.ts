@@ -17,6 +17,9 @@ export function meRoutes(db: Db, authApi: AuthApi) {
     .post('/phone', async (c) => {
       // R1.11: the confirmation time comes from Supabase Auth's record of the caller.
       const authUser = await authApi.getUser(c.get('accessToken'));
+      if (!authUser) {
+        throw new ApiError(401, errorCodes.unauthorized, 'A valid access token is required');
+      }
       if (!authUser.phone_confirmed_at) {
         throw new ApiError(
           409,
