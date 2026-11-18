@@ -13,6 +13,10 @@ function Routes() {
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Protected guard={!!session}>
         <Stack.Screen name="index" />
+        <Stack.Screen name="profile" />
+        <Stack.Screen name="listings/new" />
+        <Stack.Screen name="listings/[id]" />
+        <Stack.Screen name="pickup-locations/new" />
       </Stack.Protected>
       <Stack.Protected guard={!session}>
         <Stack.Screen name="sign-in" />

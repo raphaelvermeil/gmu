@@ -1,3 +1,3 @@
-import { ProfileScreen } from '../features/account/ProfileScreen';
+import { MyListingsScreen } from '../features/listings/MyListingsScreen';
 
-export default ProfileScreen;
+export default MyListingsScreen;

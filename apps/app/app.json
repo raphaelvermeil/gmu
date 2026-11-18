@@ -9,7 +9,25 @@
     "ios": { "bundleIdentifier": "com.gear.app" },
     "android": { "package": "com.gear.app" },
     "web": { "output": "server" },
-    "plugins": ["expo-router", "expo-status-bar", "expo-secure-store"],
+    "plugins": [
+      "expo-router",
+      "expo-status-bar",
+      "expo-secure-store",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Gear uses your photos so you can add them to your listings and profile.",
+          "cameraPermission": false,
+          "microphonePermission": false
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Gear uses your location to set where renters pick up your gear. Renters only see a point about 1 km away."
+        }
+      ]
+    ],
     "experiments": { "typedRoutes": true },
     "extra": { "eas": { "projectId": "9b75d316-b40c-47fc-b03f-df25a1239316" } },
     "owner": "raphaelvermeil"

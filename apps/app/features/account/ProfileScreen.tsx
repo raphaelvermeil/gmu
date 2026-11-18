@@ -2,12 +2,12 @@ import { updateMeSchema, type Me, type UpdateMe } from '@gear/shared';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
-import { StyleSheet, Text } from 'react-native';
+import { Image, StyleSheet, Text } from 'react-native';
 import { Button } from '../../components/Button';
 import { ErrorState, Loading, Screen } from '../../components/Screen';
 import { TextField } from '../../components/TextField';
 import { theme } from '../../components/theme';
-import { useConfirmPhone, useMe, useUpdateMe } from './queries';
+import { useConfirmPhone, useMe, useUpdateMe, useUploadAvatar } from './queries';
 import { sendPhoneCode, signOut, verifyPhoneCode } from './sign-in';
 
 export function ProfileScreen() {
@@ -18,10 +18,36 @@ export function ProfileScreen() {
   }
   return (
     <Screen title="Your profile">
+      <AvatarSection me={me.data} />
       <DisplayNameForm me={me.data} />
       <PhoneSection me={me.data} />
       <Button title="Sign out" variant="secondary" onPress={() => void signOut()} />
     </Screen>
+  );
+}
+
+// G2.14: the photo shows once the check passes.
+function AvatarSection({ me }: { me: Me }) {
+  const upload = useUploadAvatar();
+  return (
+    <>
+      {me.avatar_url ? (
+        <Image source={{ uri: me.avatar_url }} style={styles.avatar} accessibilityLabel="Your photo" />
+      ) : null}
+      <Button
+        title={me.avatar_url ? 'Change photo' : 'Add a photo'}
+        variant="secondary"
+        busy={upload.isPending}
+        onPress={() => upload.mutate()}
+      />
+      {upload.isPending ? <Text style={styles.muted}>Checking your photo…</Text> : null}
+      {upload.data === false ? (
+        <Text style={styles.error}>
+          That photo was not accepted. Use a JPEG under 5 MB with no location data.
+        </Text>
+      ) : null}
+      {upload.isError ? <Text style={styles.error}>{upload.error.message}</Text> : null}
+    </>
   );
 }
 
@@ -141,4 +167,5 @@ const styles = StyleSheet.create({
   heading: { fontSize: theme.font.body, fontWeight: '600', color: theme.color.text },
   muted: { color: theme.color.muted },
   error: { color: theme.color.danger },
+  avatar: { width: 96, height: 96, borderRadius: 48, backgroundColor: theme.color.surface },
 });

@@ -1,10 +1,10 @@
 # Step 2: Listings
 
-**Goal:** an owner can create a listing with photos, a category with size attributes, a daily price, a deposit and a pickup location, then publish it. Nothing public shows where the owner lives.
+**Goal:** an owner can create a listing with photos, a category, a daily price, a deposit and a pickup location, then publish it. Nothing public shows where the owner lives.
 
 **Depends on:** step 1.
 
-**Blocked until G2.1 is decided.** The proposal never says how an address becomes a point on the map.
+G2.1 is decided: the owner's device sets the point (see Gaps filled).
 
 ## In scope
 
@@ -25,9 +25,9 @@
 
 | Table | Fields | Notes |
 | --- | --- | --- |
-| `categories` | `parent_id`, `slug`, `attribute_schema` | Two levels |
+| `categories` | `slug`, `label` | One level, no attributes |
 | `pickup_locations` | `user_id`, `address`, `exact_point`, `public_point`, `precision` | Points are `geography(Point, 4326)` |
-| `listings` | `owner_id`, `pickup_location_id`, `category_id`, `title`, `description`, `condition`, `daily_price_cents`, `deposit_cents`, `currency`, `attributes`, `public_point`, `status`, search vector | Never hard-deleted |
+| `listings` | `owner_id`, `pickup_location_id`, `category_id`, `title`, `description`, `condition`, `daily_price_cents`, `deposit_cents`, `currency`, `public_point`, `status`, search vector | Never hard-deleted |
 | `listing_images` | `listing_id`, `storage_path`, `position`, `verified_at` | Paths are immutable |
 | `availability_blocks` | `listing_id`, `period`, `kind`, `rental_item_id` | See below |
 
@@ -49,14 +49,17 @@ Step 5 adds the foreign key from `rental_item_id` to `rental_items(id)` with `on
 
 | Endpoint | Purpose | Who |
 | --- | --- | --- |
-| `GET /v1/categories` | The category tree with attribute schemas | Anyone |
+| `GET /v1/categories` | The list of categories | Anyone |
 | `GET`, `POST /v1/me/pickup-locations`, `PATCH /v1/me/pickup-locations/:id` | The caller's pickup locations, with address | Owner of the location |
 | `GET /v1/me/listings` | The caller's listings, drafts included | Signed-in user |
-| `POST /v1/listings`, `PATCH /v1/listings/:id` | Create and edit, including status | Owner |
+| `POST /v1/listings`, `PATCH /v1/listings/:id` | Create and edit the fields. PATCH does not take `status` | Owner |
+| `POST /v1/listings/:id/publish`, `/pause`, `/archive` | Status commands (G2.12) | Owner |
 | `GET /v1/listings/:id` | Listing detail with the public point only | Anyone for an active listing; the owner for any status |
 | `POST /v1/listings/:id/images` | A signed upload URL | Owner |
+| `POST /v1/listings/:id/images/:imageId/complete` | The upload finished; queue the photo check | Owner |
+| `POST /v1/me/avatar`, `POST /v1/me/avatar/complete` | A signed upload URL for the avatar; queue its check | Signed-in user |
 | `DELETE /v1/listings/:id/images/:imageId` | Remove a photo | Owner |
-| `PUT /v1/listings/:id/blocks` | Replace the blackout dates | Owner |
+| `GET`, `PUT /v1/listings/:id/blocks` | Read and replace the blackout dates | Owner |
 
 ## Rules
 
@@ -71,12 +74,12 @@ Location:
 Listings:
 
 - **R2.6** `status` is `draft`, `active`, `paused` or `archived`. Rows are never deleted.
-- **R2.7** A listing can become active only when the owner's phone is verified, and it has a category, valid attributes, a price above zero, a pickup location and at least one verified photo.
+- **R2.7** A listing can become active only when the owner's phone is verified, and it has a category, a price above zero, a pickup location and at least one verified photo.
 - **R2.8** Archiving is refused with 409 while the listing has a rental in `requested`, `confirmed` or `active`. The test for this rule is written in step 5.
 - **R2.9** Only the owner can edit a listing, its photos and its blocks. Anyone else gets 403.
-- **R2.10** `attributes` is validated against the category's `attribute_schema`. Unknown keys are rejected.
+- **R2.10** Removed on 17 November 2026. Listings have no attributes; the owner describes the gear in the description.
 - **R2.11** `daily_price_cents` is an integer above zero. `deposit_cents` is an integer of zero or more. Both are information for the two users. Nothing is charged.
-- **R2.12** No category exists for cars, ropes, harnesses, helmets or avalanche gear.
+- **R2.12** Removed on 17 November 2026. Any gear may be listed. The safety of the gear is the two users' responsibility; the app does not check it.
 
 Photos:
 
@@ -99,7 +102,6 @@ Blackout dates and the queue:
 - Changing a pickup location updates `listings.public_point` for all its listings, or for none if the transaction fails.
 - Activation is refused once for each missing precondition in R2.7.
 - A non-owner edit of a listing, a photo or the blocks returns 403.
-- Attributes: a valid set passes, an unknown key fails, a wrong type fails.
 - Blackout dates: an overlap returns 409. Two periods that touch (one ends on the 4th, the next starts on the 5th) are both accepted.
 - Photo job: a fixture file that carries GPS metadata is rejected and deleted. A clean file is verified.
 
@@ -111,14 +113,24 @@ Blackout dates and the queue:
 
 ## Gaps filled
 
-- **G2.1 How an address becomes a point (blocking).** The proposal stores an exact point and a public point but names no geocoder. Two options. (a) No geocoder: the owner sets the point from the device's location and types the address by hand. (b) A geocoding service called by the API, which I have not evaluated. The same choice decides where a renter's search starts from in step 3.
-- **G2.2 The category list.** You write the categories and the attributes of each. Claude must not invent them.
-- **G2.3 `attribute_schema` format.** Default: a list of `{ key, label, type, options?, unit? }` where `type` is `enum` or `number`.
-- **G2.4 `condition` values.** Default: `like_new`, `good`, `fair`.
-- **G2.5 Precision options and snapping method.** Default: `1km` and `5km`, snapping to the centre of a fixed grid cell. Have Claude show you the function and its tests before any other code uses it.
-- **G2.6 Photo limits.** Default: JPEG only after re-encoding, 5 MB a file, 8 photos a listing.
+Decided with the owner on 17 November 2026.
+
+- **G2.1 How an address becomes a point.** No geocoder. The owner sets the point from the device's location (`expo-location`) and types the address by hand. Step 3 starts a renter's search from the device's location the same way.
+- **G2.2 The category list.** One level, chosen by the owner on 17 November 2026: `camping` Camping, `climbing` Climbing, `water` Water, `snow` Snow, `ski` Ski, `other` Other. A category says what kind of gear it is, not which item: a listing under Camping can be a sleeping bag or a whole kit. There are no sub-categories and no attributes. The owner writes sizes and specs in the description.
+- **G2.3 `attribute_schema` format.** Removed with the attributes (see G2.2).
+- **G2.4 `condition` values.** `like_new`, `good`, `fair`.
+- **G2.5 Precision options and snapping method.** `1km` and `5km`. A fixed grid in degrees sized for Montreal: a `1km` cell is 0.009° of latitude by 0.0128° of longitude, a `5km` cell is five times that. A point snaps to the centre of its cell. Have Claude show you the function and its tests before any other code uses it.
+- **G2.6 Photo limits.** JPEG only after re-encoding, 5 MB a file, 8 photos a listing. The limits are set on the `listing-photos` bucket, and the job checks them again. Photos still waiting for the check count toward the 8.
 - **G2.7 Where `availability_blocks` is created.** The build order puts it in step 5, but the search in step 3 filters on it. This spec creates the table and owner blackouts here.
-- **G2.8 Editing a location in use.** R2.5 is my addition. Without it, an owner could change the address of a rental that is already confirmed.
-- **G2.9 `verified_at` on `listing_images`** is my addition, so that R2.16 can be checked.
-- **G2.10 Sized photo variants.** The proposal serves thumbnails through Supabase's storage transformation URL. I have not checked which Supabase plan includes that.
-- **G2.11 Routes.** The `/v1/categories`, `/v1/me/pickup-locations`, `/v1/me/listings` and image delete routes are not in the proposal's endpoint table.
+- **G2.8 Editing a location in use.** R2.5 is built in step 5, with the `rentals` table. Until then a location is edited in place. R2.8 is also built in step 5.
+- **G2.9 `verified_at` on `listing_images`** is added so that R2.16 can be checked.
+- **G2.10 Sized photo variants.** None. Each listing serves the one photo the app resized. Supabase's transformation URLs need a paid plan.
+- **G2.11 Routes.** The `/v1/categories`, `/v1/me/pickup-locations`, `/v1/me/listings` and image delete routes are not in the proposal's endpoint table. The image `complete` and the avatar routes were added on 17 November 2026: the API learns an upload finished when the app calls `complete`, which queues the check.
+- **G2.12 Status moves.** Each move is a command, as the API conventions require: `publish` moves `draft` or `paused` to `active`, `pause` moves `active` to `paused`, and `archive` moves `draft`, `active` or `paused` to `archived`. That is `draft` → `active`, `active` → `paused`, `paused` → `active`, and `draft`, `active` or `paused` → `archived`. `archived` is final. R2.7 is checked on every move to `active`. Any other move returns 409.
+- **G2.13 Removing the last verified photo** of an active listing is refused with 409. Removing a photo deletes its file and its row.
+- **G2.14 Avatars** go through the same check as listing photos. `users.avatar_path` is set only when the photo passes. A repeated `complete` after the check ran returns `done`, not an error.
+- **G2.15 Search vector.** A generated `tsvector` over title and description, with the `simple` configuration.
+- **G2.16 Small rules.** `GET /v1/listings/:id` returns 404, not 403, for a listing that is not active and a caller who is not the owner. `currency` is always `CAD`, set by the server. A listing may only use one of its owner's pickup locations; any other location returns 403. A blackout period that ends before it starts returns 400.
+- **G2.17 New packages, approved:** `pg-boss` and `exifr` in the API; `expo-image-picker`, `expo-image-manipulator` and `expo-location` in the app.
+- **G2.18 Reading blackout dates.** Added on 17 November 2026: `GET /v1/listings/:id/blocks` returns the owner's blackout dates, in the shape `PUT` returns, so the app can show them. Owner only; anyone else gets 403. Step 3's public availability route is separate.
+- **G2.19 R2.7 while published.** Added on 17 November 2026: an edit that removes the category, the price or the pickup location of an `active` listing returns 409 with `required_while_published`. The owner pauses the listing first.

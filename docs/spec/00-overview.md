@@ -129,11 +129,11 @@ These specs use the assumption in the middle column. If a decision changes, edit
 | Server-rendered or static web build | Server-rendered | 01, 03 |
 | QR code or typed code only | QR with a typed code as fallback | 07 |
 | Sign-in methods | Email now; Apple and Google later | 01 |
-| Categories and search depth | Two-level categories, size attributes, keyword search, pagination | 02, 03 |
+| Categories and search depth | One level of categories, no attributes, keyword search, pagination | 02, 03 |
 | Photo pipeline | Resize in the app, verify in a worker job | 02, 07 |
 | Environments | Local, staging, production | 01 |
 | Launch market | Montreal, Canadian users, CAD, `America/Toronto` | 03, 05 |
-| Scope of gear | No cars. No ropes, harnesses, helmets or avalanche gear. | 02 |
+| Scope of gear | Any gear. Its safety is the users' responsibility. | 02 |
 | Pending requests block the dates | Yes | 05 |
 | Whole-day rentals, no same-day turnover | Yes | 03, 05 |
 

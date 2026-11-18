@@ -80,3 +80,16 @@ export function requireAuth(
     await next();
   });
 }
+
+// For routes open to anyone that show more to a signed-in caller (GET /v1/listings/:id).
+// No header: anonymous. A header with an invalid token: 401, as on every other route.
+export async function optionalCaller(
+  verifyToken: VerifyToken,
+  header: string | undefined,
+): Promise<string | null> {
+  if (!header) return null;
+  const match = /^Bearer (\S+)$/.exec(header);
+  const caller = match?.[1] ? await verifyToken(match[1]) : null;
+  if (!caller) throw new ApiError(401, errorCodes.unauthorized, 'A valid access token is required');
+  return caller.sub;
+}
