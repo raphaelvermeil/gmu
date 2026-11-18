@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { migrate } from 'drizzle-orm/node-postgres/migrator';
 import pg from 'pg';
+import { installQueue } from '../platform/queue.ts';
 
 export const migrationsFolder = fileURLToPath(new URL('./migrations', import.meta.url));
 
@@ -14,6 +15,8 @@ export async function runMigrations(ownerUrl: string): Promise<void> {
   } finally {
     await pool.end();
   }
+  // R2.20: the job queue's own schema, installed and upgraded by pg-boss as the owner.
+  await installQueue(ownerUrl);
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {

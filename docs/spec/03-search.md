@@ -9,7 +9,7 @@
 - The search query and its endpoint.
 - Public listing detail with HTTP caching.
 - A separate availability call for one listing.
-- Search and listing screens: a distance-sorted list with date and category filters, and infinite scroll.
+- Search and listing screens: a list sorted nearest first or cheapest first, with a keyword box, a date filter picked on a small calendar, a category filter, and infinite scroll.
 - Server-rendered listing pages on web.
 
 ## Out of scope
@@ -22,7 +22,7 @@
 
 | Endpoint | Purpose | Who |
 | --- | --- | --- |
-| `GET /v1/listings?lat&lng&radius_km&from&to&category&q&cursor` | Nearby gear that is free on the dates | Anyone |
+| `GET /v1/listings?lat&lng&radius_km&from&to&category&q&sort&cursor` | Nearby gear that is free on the dates | Anyone |
 | `GET /v1/listings/:id` | Listing detail, from step 2, now with cache headers | Anyone |
 | `GET /v1/listings/:id/availability?from&to` | The date ranges on which the listing is taken | Anyone |
 
@@ -48,9 +48,9 @@ limit 30;
 - **R3.2** The filter, the ordering and the distance shown all come from `public_point`. `exact_point` appears in no query in this module.
 - **R3.3** `from` and `to` are inclusive calendar dates. A listing matches when no availability block overlaps `[from, to + 1 day)`. A rental that ends on the 5th therefore blocks a search that starts on the 5th.
 - **R3.4** The server caps `radius_km`.
-- **R3.5** `category` matches the category and its children.
+- **R3.5** `category` matches one category. Categories have one level (G2.2).
 - **R3.6** `q` searches the listing's full-text search vector, built from title and description.
-- **R3.7** Results come 30 to a page, nearest first, with a `(distance, id)` cursor.
+- **R3.7** Results come 30 to a page. `sort=distance` (the default) orders nearest first with a `(distance, id)` cursor. `sort=price` orders by daily price, cheapest first, with a `(daily_price_cents, id)` cursor. Both keep the radius filter.
 - **R3.8** Each result is built from an output schema: id, title, daily price, deposit, currency, first verified photo, distance, category, and the owner's display name and rating.
 - **R3.9** Search results are not cached on the server. Listing detail is sent with a public cache lifetime of 60 seconds and stale-while-revalidate. The category tree is sent with a lifetime of one hour. Availability is never cached.
 - **R3.10** The availability route returns date ranges only. It does not say who rented or why a range is blocked.
@@ -65,7 +65,8 @@ limit 30;
 - Two listings at the same address return identical coordinates and distances.
 - A listing with a block that overlaps the dates is excluded. A listing whose block ends the day before `from` is included. A listing whose block ends on `from` is excluded.
 - Results are ordered nearest first. Paging through all results gives no duplicate and no gap, including when several listings share one distance.
-- The category filter returns listings in child categories.
+- The category filter returns only listings in that category.
+- `sort=price` returns cheapest first. Paging through it gives no duplicate and no gap, including when several listings share one price.
 - Privacy: the search and detail responses contain no `address` key, no `exact_point` key and no coordinate equal to an exact point.
 - Draft, paused and archived listings never appear.
 
@@ -79,7 +80,9 @@ limit 30;
 
 - **G3.1 Radius.** Default 25 km when omitted, 100 km at most. The proposal says "a capped radius" without numbers.
 - **G3.2 Text search language.** Listings in Montreal will be in French and English. Default: the `simple` configuration with `unaccent`. I have not tested which configuration ranks better.
-- **G3.3 Filtering by size attributes.** The proposal says search can filter on them but its endpoint has no parameter for it. Default: `attr[key]=value`, exact match.
+- **G3.3 Filtering by size attributes.** None. Listings have no attributes (G2.2); keyword search covers the description.
 - **G3.4 Dates.** Default: `from` and `to` are optional and come together; `from` is tomorrow or later (see G5.1); the range is 30 days at most.
 - **G3.5 Where the search starts from.** `lat` and `lng` come from the client. Whether that is the device's location or a typed place depends on G2.1.
 - **G3.6 Route.** The availability route is not in the proposal's endpoint table. The proposal only says availability is fetched separately.
+- **G3.7 Search filters**, chosen by the owner on 17 November 2026: keyword (`q`, title and description), dates on a small calendar, category, and a sort by price. There is no price range filter.
+- **G3.8 The calendar.** Not decided: build a small date-range calendar from our own components, or add a package. Ask before step 3's screens.

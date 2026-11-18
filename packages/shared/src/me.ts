@@ -5,6 +5,8 @@ import { z } from 'zod';
 export const meSchema = z.object({
   id: z.uuid(),
   display_name: z.string().nullable(),
+  avatar_url: z.url().nullable(),
+  avatar_pending: z.boolean(), // an uploaded avatar is waiting for its check (G2.14)
   phone_verified_at: z.iso.datetime({ offset: true }).nullable(),
   created_at: z.iso.datetime({ offset: true }),
 });

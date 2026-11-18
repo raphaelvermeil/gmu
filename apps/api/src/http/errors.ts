@@ -41,10 +41,19 @@ export function onError(log: Logger) {
       level: 'error',
       msg: 'unhandled error',
       request_id: c.get('requestId'),
-      error: error.message,
+      // The type and the database code only. A message can hold query values, such as an
+      // address or a coordinate (invariant 2), so it is never logged.
+      error: error.constructor.name,
+      db_code: dbCode(error),
     });
     return send(c, 500, { code: errorCodes.internal, message: 'Something went wrong' });
   };
+}
+
+function dbCode(error: Error): string | undefined {
+  const e = error as { code?: unknown; cause?: { code?: unknown } };
+  const code = e.cause?.code ?? e.code;
+  return typeof code === 'string' ? code : undefined;
 }
 
 export function notFound(c: Context) {
@@ -57,6 +66,27 @@ export function jsonBody<T extends z.ZodType>(schema: T) {
     const result = schema.safeParse(value);
     if (!result.success) {
       throw new ApiError(400, errorCodes.validationFailed, 'The request body is not valid', {
+        issues: result.error.issues.map((i) => ({ path: i.path.join('.'), message: i.message })),
+      });
+    }
+    return result.data;
+  });
+}
+
+// Path ids are UUIDs (invariant 6). Anything else is a resource that does not exist.
+export function uuidParam(value: string): string {
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value)) {
+    throw new ApiError(404, errorCodes.notFound, 'Not found');
+  }
+  return value;
+}
+
+// R1.7: validate a query string with a schema from packages/shared.
+export function queryParams<T extends z.ZodType>(schema: T) {
+  return validator('query', (value): z.output<T> => {
+    const result = schema.safeParse(value);
+    if (!result.success) {
+      throw new ApiError(400, errorCodes.validationFailed, 'The query string is not valid', {
         issues: result.error.issues.map((i) => ({ path: i.path.join('.'), message: i.message })),
       });
     }

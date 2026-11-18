@@ -13,5 +13,12 @@ export const errorCodes = {
   notFound: 'not_found',
   validationFailed: 'validation_failed',
   phoneNotVerified: 'phone_not_verified',
+  forbidden: 'forbidden',
+  activationRefused: 'activation_refused',
+  invalidStatusMove: 'invalid_status_move',
+  blockConflict: 'block_conflict',
+  photoLimit: 'photo_limit',
+  lastVerifiedPhoto: 'last_verified_photo',
+  requiredWhilePublished: 'required_while_published',
   internal: 'internal_error',
 } as const;

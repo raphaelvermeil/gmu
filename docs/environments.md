@@ -41,6 +41,7 @@ Nothing here is secret. `supabase start` gives every developer the same values.
 | `DATABASE_URL`             | **yes** | Direct connection as the `api` role: `postgresql://api:<password>@db.<ref>.supabase.co:5432/postgres`. The pooler form did not work for the `api` role. |
 | `SUPABASE_URL`             | no      | `https://<ref>.supabase.co`, with no trailing slash                                                                                                     |
 | `SUPABASE_PUBLISHABLE_KEY` | no      | `sb_publishable_…`                                                                                                                                      |
+| `SUPABASE_SECRET_KEY`      | **yes** | `sb_secret_…`, for Storage only: signing upload URLs, and reading and deleting uploaded photos (step 2). Supabase → Settings → API Keys → Secret keys |
 | `CORS_ORIGINS`             | no      | Comma-separated origins: the staging web URL and `http://localhost:8081`                                                                                |
 
 To change one: `fly secrets set --app gear-api-staging NAME=value`, or `fly secrets import`, which reads from standard input. Setting a secret restarts the API. `fly secrets list` shows names only.

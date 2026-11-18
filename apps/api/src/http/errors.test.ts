@@ -40,3 +40,27 @@ describe('error shape (R1.6)', () => {
     expect(errorSchema.strict().parse(await res.json()).code).toBe('validation_failed');
   });
 });
+
+describe('unhandled errors (invariant 2, R1.9)', () => {
+  it('log the error type and database code, never the message, which can carry query values', async () => {
+    const { Hono } = await import('hono');
+    const { DrizzleQueryError } = await import('drizzle-orm');
+    const { onError } = await import('./errors.ts');
+    const lines: Record<string, unknown>[] = [];
+    const app = new Hono();
+    app.onError(onError((line) => lines.push(line)));
+    app.get('/boom', () => {
+      const cause = Object.assign(new Error('canceling statement due to statement timeout'), {
+        code: '57014',
+      });
+      throw new DrizzleQueryError('update pickup_locations set address = $1', ['1234 rue Secrète', 45.4961], cause);
+    });
+
+    const res = await app.request('/boom');
+    expect(res.status).toBe(500);
+    const logged = JSON.stringify(lines);
+    expect(logged).not.toContain('rue Secrète');
+    expect(logged).not.toContain('45.4961');
+    expect(lines[0]).toMatchObject({ level: 'error', error: 'DrizzleQueryError', db_code: '57014' });
+  });
+});
