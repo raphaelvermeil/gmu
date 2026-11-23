@@ -330,6 +330,16 @@ describe('filters (R3.1, R3.5, R3.6)', () => {
     expect(await ids(origin)).toEqual([active]);
   });
 
+  it('leaves out an active listing without a price, instead of failing the page', async () => {
+    const origin = newOrigin();
+    const broken = await seed(north(origin, 0.01));
+    await owner.query('update public.listings set daily_price_cents = null where id = $1', [
+      broken,
+    ]);
+    const good = await seed(north(origin, 0.02));
+    expect(await ids(origin)).toEqual([good]);
+  });
+
   it('matches title and description, accents ignored, from the start of each word', async () => {
     const origin = newOrigin();
     const velo = await seed(north(origin, 0.01), { title: 'Vélo de route' });

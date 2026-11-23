@@ -1,3 +1,3 @@
-import { MyListingsScreen } from '../features/listings/MyListingsScreen';
+import { SearchScreen } from '../features/search/SearchScreen';
 
-export default MyListingsScreen;
+export default SearchScreen;

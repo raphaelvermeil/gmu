@@ -29,7 +29,7 @@ export function MyListingsScreen() {
           <Pressable
             key={l.id}
             accessibilityRole="link"
-            onPress={() => router.push({ pathname: '/listings/[id]', params: { id: l.id } })}
+            onPress={() => router.push({ pathname: '/listings/[id]/edit', params: { id: l.id } })}
             style={styles.row}
           >
             <View style={styles.grow}>
@@ -42,6 +42,9 @@ export function MyListingsScreen() {
           </Pressable>
         ))
       )}
+      <Link href="/" style={styles.link}>
+        Find gear
+      </Link>
       <Link href="/profile" style={styles.link}>
         Your profile
       </Link>

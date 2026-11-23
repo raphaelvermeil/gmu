@@ -79,6 +79,7 @@ export async function searchListings(tx: Tx, storage: Storage, query: SearchQuer
     join public.categories c on c.id = l.category_id
     join public.users u on u.id = l.owner_id
     where l.status = 'active'
+      and l.daily_price_cents is not null
       and extensions.st_dwithin(l.public_point, ${origin}, ${query.radius_km * 1000}::float8)
       ${query.category ? sql`and l.category_id = ${query.category}::uuid` : sql``}
       ${keywordFilter(query.q)}

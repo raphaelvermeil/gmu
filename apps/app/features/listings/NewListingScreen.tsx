@@ -31,7 +31,7 @@ export function NewListingScreen() {
             { title: title.trim() },
             {
               onSuccess: (listing) =>
-                router.replace({ pathname: '/listings/[id]', params: { id: listing.id } }),
+                router.replace({ pathname: '/listings/[id]/edit', params: { id: listing.id } }),
             },
           )
         }
