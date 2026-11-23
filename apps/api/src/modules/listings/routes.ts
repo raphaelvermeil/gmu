@@ -39,12 +39,23 @@ import {
 // Open to anyone: mounted before the sign-in check.
 export function publicListingRoutes(db: Db, storage: Storage, verifyToken: VerifyToken) {
   return new Hono()
-    .get('/categories', async (c) =>
-      c.json(categoryListSchema.parse({ categories: await listCategories(db) })),
-    )
+    .get('/categories', async (c) => {
+      const body = categoryListSchema.parse({ categories: await listCategories(db) });
+      c.header('Cache-Control', 'public, max-age=3600'); // R3.9
+      return c.json(body);
+    })
     .get('/listings/:id', async (c) => {
+      // R3.9: an error keeps `no-store`. The owner's answer also holds drafts and unverified
+      // photos, so only an answer to a request without a token may be shared.
+      c.header('Vary', 'Authorization', { append: true });
+      c.header('Cache-Control', 'no-store');
       const viewer = await optionalCaller(verifyToken, c.req.header('Authorization'));
-      return c.json(await getListing(db, storage, viewer, uuidParam(c.req.param('id'))));
+      const listing = await getListing(db, storage, viewer, uuidParam(c.req.param('id')));
+      c.header(
+        'Cache-Control',
+        viewer ? 'private, no-store' : 'public, max-age=60, stale-while-revalidate=60',
+      );
+      return c.json(listing);
     });
 }
 
