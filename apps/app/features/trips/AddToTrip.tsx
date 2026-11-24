@@ -65,6 +65,7 @@ function Form({ listingId }: { listingId: string }) {
               onPress={() => {
                 setChosen(t.id);
                 setChanged(null);
+                add.reset();
               }}
             />
           ))}
@@ -102,18 +103,31 @@ function Form({ listingId }: { listingId: string }) {
               add.mutate(
                 { tripId: trip.id, listing_id: listingId, ...valid },
                 {
-                  onSuccess: () =>
-                    router.push({ pathname: '/trips/[id]', params: { id: trip.id } }),
+                  onSuccess: (item) => {
+                    if (differs(item, valid)) return;
+                    router.push({ pathname: '/trips/[id]', params: { id: trip.id } });
+                  },
                 },
               );
             }}
           />
+          {add.isSuccess && differs(add.data, add.variables) ? (
+            <Text style={styles.error}>
+              Already in this trip for {add.data.start_date} to {add.data.end_date}. To change the
+              dates, remove it from the trip first.
+            </Text>
+          ) : null}
           {add.isError ? <Text style={styles.error}>{add.error.message}</Text> : null}
         </>
       ) : null}
     </View>
   );
 }
+
+// G4.8: adding again returns the existing item, with its own dates.
+type ItemDates = { start_date?: string; end_date?: string };
+const differs = (a: ItemDates, b: ItemDates) =>
+  a.start_date !== b.start_date || a.end_date !== b.end_date;
 
 const styles = StyleSheet.create({
   section: { gap: theme.space.md },
