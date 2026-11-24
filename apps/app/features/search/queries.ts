@@ -10,9 +10,10 @@ export type Filters = {
 };
 
 // G3.5: the device's location; null when the renter denies it. Never log it.
-export function useOrigin() {
+export function useOrigin(enabled = true) {
   return useQuery({
     queryKey: ['device-location'],
+    enabled,
     queryFn: async () => {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') return null;

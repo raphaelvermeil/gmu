@@ -25,16 +25,16 @@ export const MAX_PHOTOS_PER_LISTING = 8; // G2.6
 
 // ---------- Points (raw SQL: PostGIS) ----------
 
-const toGeography = (p: Point) =>
+export const toGeography = (p: Point) =>
   sql`extensions.st_setsrid(extensions.st_makepoint(${p.lng}, ${p.lat}), 4326)::extensions.geography`;
-const latOf = (column: string) => sql.raw(`extensions.st_y(${column}::extensions.geometry)`);
-const lngOf = (column: string) => sql.raw(`extensions.st_x(${column}::extensions.geometry)`);
+export const latOf = (column: string) => sql.raw(`extensions.st_y(${column}::extensions.geometry)`);
+export const lngOf = (column: string) => sql.raw(`extensions.st_x(${column}::extensions.geometry)`);
 
 // ---------- Cursors: (created_at, id), newest first ----------
 
-type Page = { cursor?: string; limit: number };
+export type Page = { cursor?: string; limit: number };
 
-function decodeCursor(cursor: string | undefined): { at: string; id: string } | null {
+export function decodeCursor(cursor: string | undefined): { at: string; id: string } | null {
   if (!cursor) return null;
   try {
     const [at, id] = JSON.parse(Buffer.from(cursor, 'base64url').toString()) as [string, string];
@@ -45,7 +45,7 @@ function decodeCursor(cursor: string | undefined): { at: string; id: string } | 
   throw new ApiError(400, errorCodes.validationFailed, 'The cursor is not valid');
 }
 
-function pageOf<T extends { created_at_cursor: string; id: string }>(rows: T[], limit: number) {
+export function pageOf<T extends { created_at_cursor: string; id: string }>(rows: T[], limit: number) {
   const items = rows.slice(0, limit);
   const last = items.at(-1);
   const next =
@@ -55,7 +55,7 @@ function pageOf<T extends { created_at_cursor: string; id: string }>(rows: T[], 
   return { items, next_cursor: next };
 }
 
-const after = (table: string, cursor: { at: string; id: string } | null) =>
+export const after = (table: string, cursor: { at: string; id: string } | null) =>
   cursor
     ? sql`and (${sql.raw(table)}.created_at, ${sql.raw(table)}.id) < (${cursor.at}::timestamptz, ${cursor.id}::uuid)`
     : sql``;
@@ -275,6 +275,69 @@ export async function listMyListings(tx: Tx, storage: Storage, userId: string, p
   const result = [];
   for (const row of items) result.push(await toListing(tx, storage, row, true));
   return { listings: result, next_cursor };
+}
+
+// For other modules, which do not read `listings` themselves: any status, public point only.
+export type ListingFacts = {
+  id: string;
+  owner_id: string;
+  pickup_location_id: string | null;
+  title: string;
+  status: Listing['status'];
+  daily_price_cents: number | null;
+  deposit_cents: number;
+  photo_url: string | null;
+  distance_m: number | null; // null without an origin or a public point
+};
+
+export async function listingFacts(
+  tx: Tx,
+  storage: Storage,
+  ids: string[],
+  origin: Point | null,
+): Promise<Map<string, ListingFacts>> {
+  if (ids.length === 0) return new Map();
+  const distance = origin
+    ? sql`extensions.st_distance(l.public_point, ${toGeography(origin)})`
+    : sql`null::float8`;
+  const { rows } = await tx.execute<
+    Omit<ListingFacts, 'photo_url'> & { photo_path: string | null }
+  >(sql`
+    select l.id, l.owner_id, l.pickup_location_id, l.title, l.status, l.daily_price_cents,
+           l.deposit_cents, ${distance} as distance_m,
+           (select i.storage_path from public.listing_images i
+            where i.listing_id = l.id and i.verified_at is not null
+            order by i.position, i.id limit 1) as photo_path
+    from public.listings l
+    where l.id in (${sql.join(ids.map((id) => sql`${id}::uuid`), sql`, `)})`);
+  return new Map(
+    rows.map(({ photo_path, ...row }) => [
+      row.id,
+      {
+        ...row,
+        photo_url: photo_path ? storage.publicUrl(LISTING_PHOTOS_BUCKET, photo_path) : null,
+        distance_m: row.distance_m === null ? null : Math.round(row.distance_m),
+      },
+    ]),
+  );
+}
+
+// R4.7: which of these items have a day taken by any block. Dates are inclusive.
+export async function takenItemIds(
+  tx: Tx,
+  items: { id: string; listing_id: string; start_date: string; end_date: string }[],
+): Promise<Set<string>> {
+  if (items.length === 0) return new Set();
+  const values = items.map(
+    (i) => sql`(${i.id}::uuid, ${i.listing_id}::uuid, ${i.start_date}::date, ${i.end_date}::date)`,
+  );
+  const { rows } = await tx.execute<{ id: string }>(sql`
+    select i.id
+    from (values ${sql.join(values, sql`, `)}) as i (id, listing_id, start_date, end_date)
+    where exists (
+      select 1 from public.availability_blocks b
+      where b.listing_id = i.listing_id and b.period && daterange(i.start_date, i.end_date, '[]'))`);
+  return new Set(rows.map((r) => r.id));
 }
 
 async function checkCategory(tx: Tx, categoryId: string | null | undefined) {

@@ -6,7 +6,7 @@ import { categorySchema, pointSchema } from './listings.ts';
 const queryNumber = z.string().trim().min(1).pipe(z.coerce.number());
 const DAY_MS = 86_400_000;
 // Both ends count (G3.4).
-const countedDays = (from: string, to: string) =>
+export const countedDays = (from: string, to: string) =>
   (Date.parse(to) - Date.parse(from)) / DAY_MS + 1;
 
 // Today's calendar date at the pickup locations (launch market: Montreal).

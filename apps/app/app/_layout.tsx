@@ -18,6 +18,9 @@ function Routes() {
         <Stack.Screen name="listings/new" />
         <Stack.Screen name="listings/[id]/edit" />
         <Stack.Screen name="pickup-locations/new" />
+        <Stack.Screen name="trips/index" />
+        <Stack.Screen name="trips/new" />
+        <Stack.Screen name="trips/[id]" />
       </Stack.Protected>
       <Stack.Protected guard={!session}>
         <Stack.Screen name="sign-in" />

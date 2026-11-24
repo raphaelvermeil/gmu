@@ -20,5 +20,7 @@ export const errorCodes = {
   photoLimit: 'photo_limit',
   lastVerifiedPhoto: 'last_verified_photo',
   requiredWhilePublished: 'required_while_published',
+  ownListing: 'own_listing',
+  tripFull: 'trip_full',
   internal: 'internal_error',
 } as const;

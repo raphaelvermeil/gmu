@@ -50,7 +50,7 @@ This table is the whole state machine. Any pair of status and event that is not 
 
 | Endpoint | Purpose | Who |
 | --- | --- | --- |
-| `POST /v1/trips/:id/submit` | One rental request per owner, with any conflicts named | The trip's renter |
+| `POST /v1/trips/:id/submit` | One rental request per group (R4.6), with any conflicts named | The trip's renter |
 | `GET /v1/rentals?role=...&status=...` | The caller's rentals as renter or as owner | Signed-in user |
 | `GET /v1/rentals/:id` | One rental with its items and events | Participant |
 | `POST /v1/rentals/:id/accept`, `/decline` | The owner's decision | Owner |
@@ -61,7 +61,7 @@ This table is the whole state machine. Any pair of status and event that is not 
 
 Submit:
 
-- **R5.1** Submit groups the trip's items by owner and date range. For each group, one transaction creates the rental in `requested`, its items with title and price snapshots, one availability block per item, the `requested` event and the expiry job.
+- **R5.1** Submit groups the trip's items by owner, date range and pickup location (R4.6). For each group, one transaction creates the rental in `requested`, its items with title and price snapshots, one availability block per item, the `requested` event and the expiry job.
 - **R5.2** If a group's transaction hits the exclusion constraint, that whole group rolls back and the response names the conflicting listings. The other groups are not affected.
 - **R5.3** The response is `{ created, conflicts }`. The status is 200 when at least one rental was created and 409 when none was.
 - **R5.4** Submit skips an item that is already covered by a rental of this trip in `requested`, `confirmed`, `active` or `completed`. Submitting again after a decline therefore sends only what has not been sent. Repeating a submit creates nothing new.
@@ -126,3 +126,4 @@ Reading:
 - **G5.6 Time zone.** Dates are calendar dates at the pickup location. Default: one constant, `America/Toronto`, in `packages/shared`.
 - **G5.7 Where the decline reason is stored.** Default: in the event's `data`.
 - **G5.8 Route.** `GET /v1/rentals/:id` is not in the proposal's endpoint table.
+- **G5.9 Carried over from step 4.** The blocks of a trip's own rentals must not mark that trip's items `unavailable`. The foreign key on `rental_item_id` breaks the step 3 and step 4 tests that insert a `rental` block with a made-up id; change their setup. Nothing yet says when a trip becomes `submitted`: ask.

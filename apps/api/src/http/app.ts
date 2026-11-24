@@ -8,6 +8,7 @@ import { ensureUser } from '../modules/identity/service.ts';
 import { meRoutes } from '../modules/identity/routes.ts';
 import { listingRoutes, meListingRoutes, publicListingRoutes } from '../modules/listings/routes.ts';
 import { searchRoutes } from '../modules/search/routes.ts';
+import { tripRoutes } from '../modules/trips/routes.ts';
 import type { AuthApi } from '../platform/auth.ts';
 import type { Queue } from '../platform/queue.ts';
 import type { Storage } from '../platform/storage.ts';
@@ -61,7 +62,8 @@ export function createApp({
     .use(requireAuth(verifyToken, (userId) => ensureUser(db, userId)))
     .route('/me', meRoutes(db, authApi, storage, queue))
     .route('/me', meListingRoutes(db, storage))
-    .route('/listings', listingRoutes(db, storage, queue));
+    .route('/listings', listingRoutes(db, storage, queue))
+    .route('/trips', tripRoutes(db, storage));
 
   return app.route('/v1', open).route('/v1', v1);
 }

@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { eq } from 'drizzle-orm';
+import { eq, inArray } from 'drizzle-orm';
 import { meSchema, type Me, type PhotoUpload } from '@gear/shared';
 import type { Tx } from '../../db/client.ts';
 import { users } from '../../db/schema.ts';
@@ -24,6 +24,25 @@ export async function getMe(tx: Tx, storage: Storage, userId: string): Promise<M
 // R2.7: for other modules, which do not read `users` themselves.
 export async function isPhoneVerified(tx: Tx, userId: string): Promise<boolean> {
   return (await userRow(tx, userId)).phoneVerifiedAt !== null;
+}
+
+// R4.9: an owner's public name and rating, for other modules.
+export async function ownerSummaries(tx: Tx, ids: string[]) {
+  const rows = await tx
+    .select({
+      id: users.id,
+      display_name: users.displayName,
+      rating_avg: users.ownerRatingAvg,
+      rating_count: users.ownerRatingCount,
+    })
+    .from(users)
+    .where(inArray(users.id, ids));
+  return new Map(
+    rows.map((row) => [
+      row.id,
+      { ...row, rating_avg: row.rating_avg === null ? null : Number(row.rating_avg) },
+    ]),
+  );
 }
 
 export async function updateDisplayName(
