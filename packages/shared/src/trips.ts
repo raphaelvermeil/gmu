@@ -1,0 +1,43 @@
+import { z } from 'zod';
+import { pointSchema } from './listings.ts';
+import { countedDays, todayInToronto } from './search.ts';
+
+// Step 4: trips.
+
+// G4.6: the one check on trip and item dates, the same as search. Null when they are fine.
+export function tripDateError(start: string, end: string): string | null {
+  if (start <= todayInToronto()) return 'the start is before tomorrow';
+  if (end < start) return 'the end is before the start';
+  if (countedDays(start, end) > 30) return 'the range is over 30 days';
+  return null;
+}
+
+// POST /v1/trips
+export const createTripSchema = z
+  .strictObject({
+    name: z.string().trim().min(1).max(60),
+    start_date: z.iso.date(),
+    end_date: z.iso.date(),
+    origin: pointSchema.optional(), // G4.2: stored snapped
+  })
+  .superRefine((v, ctx) => {
+    const message = tripDateError(v.start_date, v.end_date);
+    if (message) ctx.addIssue({ code: 'custom', message });
+  });
+export type CreateTrip = z.infer<typeof createTripSchema>;
+
+// For the trip's renter only. `origin_point` is snapped (R4.11).
+export const tripSchema = z.object({
+  id: z.uuid(),
+  name: z.string(),
+  start_date: z.iso.date(),
+  end_date: z.iso.date(),
+  status: z.enum(['draft', 'submitted']),
+  origin_point: pointSchema.nullable(),
+  created_at: z.iso.datetime({ offset: true }),
+});
+export type Trip = z.infer<typeof tripSchema>;
+export const tripListSchema = z.object({
+  trips: z.array(tripSchema),
+  next_cursor: z.string().nullable(),
+});

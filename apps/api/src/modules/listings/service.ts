@@ -25,16 +25,16 @@ export const MAX_PHOTOS_PER_LISTING = 8; // G2.6
 
 // ---------- Points (raw SQL: PostGIS) ----------
 
-const toGeography = (p: Point) =>
+export const toGeography = (p: Point) =>
   sql`extensions.st_setsrid(extensions.st_makepoint(${p.lng}, ${p.lat}), 4326)::extensions.geography`;
-const latOf = (column: string) => sql.raw(`extensions.st_y(${column}::extensions.geometry)`);
-const lngOf = (column: string) => sql.raw(`extensions.st_x(${column}::extensions.geometry)`);
+export const latOf = (column: string) => sql.raw(`extensions.st_y(${column}::extensions.geometry)`);
+export const lngOf = (column: string) => sql.raw(`extensions.st_x(${column}::extensions.geometry)`);
 
 // ---------- Cursors: (created_at, id), newest first ----------
 
-type Page = { cursor?: string; limit: number };
+export type Page = { cursor?: string; limit: number };
 
-function decodeCursor(cursor: string | undefined): { at: string; id: string } | null {
+export function decodeCursor(cursor: string | undefined): { at: string; id: string } | null {
   if (!cursor) return null;
   try {
     const [at, id] = JSON.parse(Buffer.from(cursor, 'base64url').toString()) as [string, string];
@@ -45,7 +45,7 @@ function decodeCursor(cursor: string | undefined): { at: string; id: string } | 
   throw new ApiError(400, errorCodes.validationFailed, 'The cursor is not valid');
 }
 
-function pageOf<T extends { created_at_cursor: string; id: string }>(rows: T[], limit: number) {
+export function pageOf<T extends { created_at_cursor: string; id: string }>(rows: T[], limit: number) {
   const items = rows.slice(0, limit);
   const last = items.at(-1);
   const next =
@@ -55,7 +55,7 @@ function pageOf<T extends { created_at_cursor: string; id: string }>(rows: T[], 
   return { items, next_cursor: next };
 }
 
-const after = (table: string, cursor: { at: string; id: string } | null) =>
+export const after = (table: string, cursor: { at: string; id: string } | null) =>
   cursor
     ? sql`and (${sql.raw(table)}.created_at, ${sql.raw(table)}.id) < (${cursor.at}::timestamptz, ${cursor.id}::uuid)`
     : sql``;

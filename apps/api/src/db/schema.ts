@@ -1,5 +1,5 @@
 // Drizzle's view of the tables. The SQL migrations are the source of truth.
-import { customType, integer, numeric, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
+import { customType, date, integer, numeric, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
 
 // Points are read and written with raw SQL (PostGIS); Drizzle only knows the column exists.
 const geography = customType<{ data: string }>({ dataType: () => 'geography(Point, 4326)' });
@@ -68,4 +68,25 @@ export const availabilityBlocks = pgTable('availability_blocks', {
   period: daterange('period').notNull(),
   kind: text('kind').notNull(),
   rentalItemId: uuid('rental_item_id').unique(),
+});
+
+export const trips = pgTable('trips', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  renterId: uuid('renter_id').notNull(),
+  name: text('name').notNull(),
+  startDate: date('start_date').notNull(),
+  endDate: date('end_date').notNull(),
+  status: text('status').notNull().default('draft'),
+  originPoint: geography('origin_point'),
+  createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow(),
+});
+
+export const tripItems = pgTable('trip_items', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  tripId: uuid('trip_id').notNull(),
+  listingId: uuid('listing_id').notNull(),
+  startDate: date('start_date').notNull(),
+  endDate: date('end_date').notNull(),
+  dailyPriceCentsAtAdd: integer('daily_price_cents_at_add').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow(),
 });
