@@ -44,6 +44,9 @@ export function SearchScreen() {
             </Text>
             {session ? (
               <View style={styles.links}>
+                <Link href="/trips" style={styles.link}>
+                  Your trips
+                </Link>
                 <Link href="/my-listings" style={styles.link}>
                   Your gear
                 </Link>
