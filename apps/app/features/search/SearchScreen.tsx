@@ -47,7 +47,11 @@ function Search({ trip }: { trip: Trip | undefined }) {
   const items = results.data?.pages.flatMap((p) => p.listings) ?? [];
 
   return (
-    <SafeAreaView style={styles.safe}>
+    // With a trip, the navigation header covers the top inset.
+    <SafeAreaView
+      style={styles.safe}
+      edges={trip ? ['bottom', 'left', 'right'] : ['top', 'bottom', 'left', 'right']}
+    >
       <FlatList
         data={items}
         keyExtractor={(l) => l.id}
