@@ -349,3 +349,218 @@ describe('ownership (R4.1)', () => {
     expect((await remove(token, randomUUID(), randomUUID())).status).toBe(404);
   });
 });
+
+const read = async (token: string, tripId: string) => {
+  const res = await call('GET', `/v1/trips/${tripId}`, token);
+  expect(res.status).toBe(200);
+  return res;
+};
+type Group = { items: { listing_id: string; mark: string }[]; [key: string]: unknown };
+const shape = (body: { groups: Group[] }) =>
+  body.groups.map((g) => g.items.map((i) => i.listing_id));
+
+describe('reading: groups (R4.6)', () => {
+  it('puts one owner, one date range and one pickup location in one group', async () => {
+    const { token } = await newUser();
+    const trip = await newTrip(token);
+    const ownerId = (await newUser()).id;
+    const locationId = await newLocation(ownerId);
+    const a = await seed({ ownerId, locationId });
+    const b = await seed({ ownerId, locationId });
+    await added(token, trip, a);
+    await added(token, trip, b);
+    expect(shape((await read(token, trip)).body)).toEqual([[a, b]]);
+  });
+
+  it('splits one owner with different dates', async () => {
+    const { token } = await newUser();
+    const trip = await newTrip(token);
+    const ownerId = (await newUser()).id;
+    const locationId = await newLocation(ownerId);
+    const a = await seed({ ownerId, locationId });
+    const b = await seed({ ownerId, locationId });
+    await added(token, trip, a);
+    await added(token, trip, b, { start_date: day(10), end_date: day(11) });
+    const groups = (await read(token, trip)).body.groups;
+    expect(groups.map((g: Group) => [g.start_date, g.end_date, g.days])).toEqual([
+      [day(10), day(12), 3],
+      [day(10), day(11), 2],
+    ]);
+  });
+
+  it('splits one owner with different pickup locations', async () => {
+    const { token } = await newUser();
+    const trip = await newTrip(token);
+    const ownerId = (await newUser()).id;
+    const a = await seed({ ownerId });
+    const b = await seed({ ownerId });
+    await added(token, trip, a);
+    await added(token, trip, b);
+    expect(shape((await read(token, trip)).body)).toEqual([[a], [b]]);
+  });
+
+  it('splits two owners, and shows each name and rating (R4.9)', async () => {
+    const { token } = await newUser();
+    const trip = await newTrip(token);
+    const sam = await newUser();
+    await owner.query(
+      `update public.users set display_name = 'Sam', owner_rating_avg = 4.75,
+         owner_rating_count = 12 where id = $1`,
+      [sam.id],
+    );
+    const other = await newUser();
+    await added(token, trip, await seed({ ownerId: sam.id }));
+    await added(token, trip, await seed({ ownerId: other.id }));
+    const groups = (await read(token, trip)).body.groups;
+    expect(groups.map((g: Group) => g.owner)).toEqual([
+      { id: sam.id, display_name: 'Sam', rating_avg: 4.75, rating_count: 12 },
+      { id: other.id, display_name: null, rating_avg: null, rating_count: 0 },
+    ]);
+  });
+
+  it('answers with no group and zero totals for an empty trip', async () => {
+    const { token } = await newUser();
+    const { body } = await read(token, await newTrip(token));
+    expect(body).toMatchObject({ groups: [], price_cents: 0, deposit_cents: 0, currency: 'CAD' });
+  });
+});
+
+describe('reading: marks (R4.7, R4.8, G4.10)', () => {
+  const cases: [string, string, (listing: string, item: string) => Promise<unknown>][] = [
+    ['nothing changed', 'available', async () => {}],
+    ['a block ends the day before', 'available', (l) => block(l, day(7), day(9))],
+    ['a block starts the day after', 'available', (l) => block(l, day(13), day(14))],
+    ['a blackout takes the last day', 'unavailable', (l) => block(l, day(12), day(14))],
+    ['a rental takes the first day', 'unavailable', (l) => block(l, day(8), day(10), 'rental')],
+    ['the listing is paused', 'unavailable', (l) => setListing(l, "status = 'paused'")],
+    ['the listing is archived', 'unavailable', (l) => setListing(l, "status = 'archived'")],
+    [
+      'the item starts today',
+      'unavailable',
+      (_, i) =>
+        owner.query('update public.trip_items set start_date = $2 where id = $1', [i, day(0)]),
+    ],
+    ['the price rose', 'price_changed', (l) => setListing(l, 'daily_price_cents = 3000')],
+    ['the price dropped', 'price_changed', (l) => setListing(l, 'daily_price_cents = 2000')],
+    [
+      'the price changed on taken dates',
+      'unavailable',
+      async (l) => {
+        await setListing(l, 'daily_price_cents = 3000');
+        await block(l, day(10), day(12));
+      },
+    ],
+  ];
+  it.each(cases)('%s: %s', async (_, mark, change) => {
+    const { token } = await newUser();
+    const trip = await newTrip(token);
+    const listing = await seed();
+    const item = await added(token, trip, listing);
+    await change(listing, item);
+    const { body } = await read(token, trip);
+    expect(body.groups[0].items[0].mark).toBe(mark);
+  });
+
+  it('shows a paused listing that lost its price and pickup location', async () => {
+    const { token } = await newUser();
+    const trip = await newTrip(token, { origin: ORIGIN });
+    const listing = await seed();
+    await added(token, trip, listing);
+    await setListing(
+      listing,
+      `status = 'paused', daily_price_cents = null, pickup_location_id = null, public_point = null`,
+    );
+    const { body } = await read(token, trip);
+    expect(body.groups[0]).toMatchObject({ distance_m: null, price_cents: 0, deposit_cents: 0 });
+    expect(body.groups[0].items[0]).toMatchObject({
+      mark: 'unavailable',
+      daily_price_cents: null,
+      daily_price_cents_at_add: 2500,
+      line_total_cents: null,
+    });
+  });
+});
+
+describe('reading: totals (R4.9, R4.10)', () => {
+  it('adds up the group and the trip, without unavailable items', async () => {
+    const { token } = await newUser();
+    const trip = await newTrip(token);
+    const ownerId = (await newUser()).id;
+    const locationId = await newLocation(ownerId);
+    await added(token, trip, await seed({ ownerId, locationId, price: 2500, deposit: 10000 }));
+    const cheap = await seed({ ownerId, locationId, price: 1000, deposit: 5000 });
+    await added(token, trip, cheap);
+    const totals = async () => {
+      const { body } = await read(token, trip);
+      return [body, ...body.groups].map((x) => [x.price_cents, x.deposit_cents]);
+    };
+    expect(await totals()).toEqual([
+      [10500, 15000],
+      [10500, 15000],
+    ]);
+
+    const dear = await seed({ price: 4000, deposit: 2000 });
+    await added(token, trip, dear, { start_date: day(15), end_date: day(15) });
+    expect(await totals()).toEqual([
+      [14500, 17000],
+      [10500, 15000],
+      [4000, 2000],
+    ]);
+
+    await block(cheap, day(11), day(11));
+    expect(await totals()).toEqual([
+      [11500, 12000],
+      [7500, 10000],
+      [4000, 2000],
+    ]);
+
+    await setListing(dear, 'daily_price_cents = 5000');
+    expect((await totals())[0]).toEqual([12500, 12000]);
+  });
+});
+
+describe('reading: location and privacy (R4.11, G4.3)', () => {
+  it('measures from the snapped starting point to the public point', async () => {
+    const { token } = await newUser();
+    const listing = await seed();
+    const withOrigin = await newTrip(token, { origin: ORIGIN });
+    await added(token, withOrigin, listing);
+    const snapped = snapToGrid(ORIGIN, '1km');
+    const { rows } = await owner.query(
+      `select extensions.st_distance(
+         extensions.st_setsrid(extensions.st_makepoint($1, $2), 4326)::extensions.geography,
+         extensions.st_setsrid(extensions.st_makepoint($3, $4), 4326)::extensions.geography) as m`,
+      [snapped.lng, snapped.lat, PUBLIC.lng, PUBLIC.lat],
+    );
+    const { body } = await read(token, withOrigin);
+    expect(body.groups[0].distance_m).toBe(Math.round(rows[0].m));
+
+    const without = await newTrip(token);
+    await added(token, without, listing);
+    expect((await read(token, without)).body.groups[0].distance_m).toBeNull();
+  });
+
+  it('returns no address, no exact point and no coordinate but the snapped start', async () => {
+    const { token } = await newUser();
+    const trip = await newTrip(token, { origin: ORIGIN });
+    await added(token, trip, await seed());
+    const { text, body } = await read(token, trip);
+    expect(text).not.toContain('"address"');
+    expect(text).not.toContain('"exact_point"');
+    expect(text).not.toContain(ADDRESS);
+    expect(text).not.toContain('45.527123');
+    expect(body.origin_point).toEqual(snapToGrid(ORIGIN, '1km'));
+    expect(text.match(/"(lat|lng)"/g)).toHaveLength(2);
+  });
+});
+
+describe('reading: ownership (R4.1)', () => {
+  it('refuses a second user, and answers 404 for an unknown trip', async () => {
+    const { token } = await newUser();
+    const trip = await newTrip(token);
+    const other = await newUser();
+    expect((await call('GET', `/v1/trips/${trip}`, other.token)).status).toBe(403);
+    expect((await call('GET', `/v1/trips/${randomUUID()}`, token)).status).toBe(404);
+    expect((await call('GET', '/v1/trips/nope', token)).status).toBe(404);
+  });
+});

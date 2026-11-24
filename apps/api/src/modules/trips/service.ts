@@ -1,16 +1,22 @@
 import { sql } from 'drizzle-orm';
 import {
+  countedDays,
   errorCodes,
+  todayInToronto,
   tripDateError,
+  tripDetailSchema,
   tripSchema,
   type AddTripItem,
   type CreateTrip,
   type Trip,
+  type TripDetail,
+  type TripGroup,
   type TripItem,
 } from '@gear/shared';
 import type { Tx } from '../../db/client.ts';
 import { ApiError } from '../../http/errors.ts';
 import type { Storage } from '../../platform/storage.ts';
+import { ownerSummaries } from '../identity/service.ts';
 import {
   after,
   decodeCursor,
@@ -18,6 +24,7 @@ import {
   listingFacts,
   lngOf,
   pageOf,
+  takenItemIds,
   toGeography,
   type Page,
 } from '../listings/service.ts';
@@ -88,6 +95,89 @@ async function ownTrip(tx: Tx, userId: string, tripId: string, lock = false): Pr
 }
 
 const itemColumns = sql`id, listing_id, start_date::text, end_date::text`;
+
+export async function getTrip(
+  tx: Tx,
+  storage: Storage,
+  userId: string,
+  tripId: string,
+): Promise<TripDetail> {
+  const trip = toTrip(await ownTrip(tx, userId, tripId));
+  const { rows: items } = await tx.execute<TripItem & { daily_price_cents_at_add: number }>(sql`
+    select ${itemColumns}, daily_price_cents_at_add from public.trip_items
+    where trip_id = ${tripId}
+    order by trip_items.start_date, trip_items.created_at, trip_items.id`);
+  const listings = await listingFacts(
+    tx,
+    storage,
+    items.map((i) => i.listing_id),
+    trip.origin_point,
+  );
+  const taken = await takenItemIds(tx, items);
+  const owners = await ownerSummaries(
+    tx,
+    [...listings.values()].map((l) => l.owner_id),
+  );
+  const today = todayInToronto();
+
+  // R4.6: one group per owner, date range and pickup location.
+  const groups = new Map<string, TripGroup>();
+  for (const item of items) {
+    const listing = listings.get(item.listing_id)!; // a foreign key, and listings are never deleted
+    const days = countedDays(item.start_date, item.end_date);
+    const price = listing.daily_price_cents;
+    const unavailable =
+      listing.status !== 'active' ||
+      price === null ||
+      item.start_date <= today || // G4.6
+      taken.has(item.id);
+    const lineTotal = price === null ? null : days * price;
+
+    const key = [listing.owner_id, item.start_date, item.end_date, listing.pickup_location_id].join();
+    let group = groups.get(key);
+    if (!group) {
+      group = {
+        owner: owners.get(listing.owner_id)!,
+        start_date: item.start_date,
+        end_date: item.end_date,
+        days,
+        distance_m: listing.distance_m,
+        price_cents: 0,
+        deposit_cents: 0,
+        items: [],
+      };
+      groups.set(key, group);
+    }
+    group.items.push({
+      id: item.id,
+      listing_id: item.listing_id,
+      title: listing.title,
+      photo_url: listing.photo_url,
+      mark: unavailable
+        ? 'unavailable'
+        : price === item.daily_price_cents_at_add
+          ? 'available'
+          : 'price_changed',
+      daily_price_cents: price,
+      daily_price_cents_at_add: item.daily_price_cents_at_add,
+      line_total_cents: lineTotal,
+      deposit_cents: listing.deposit_cents,
+    });
+    if (!unavailable) {
+      group.price_cents += lineTotal!;
+      group.deposit_cents += listing.deposit_cents;
+    }
+  }
+
+  const all = [...groups.values()];
+  return tripDetailSchema.parse({
+    ...trip,
+    currency: 'CAD',
+    price_cents: all.reduce((sum, g) => sum + g.price_cents, 0),
+    deposit_cents: all.reduce((sum, g) => sum + g.deposit_cents, 0),
+    groups: all,
+  });
+}
 
 export async function addTripItem(
   tx: Tx,

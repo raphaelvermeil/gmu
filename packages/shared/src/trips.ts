@@ -60,3 +60,39 @@ export const tripItemSchema = z.object({
   end_date: z.iso.date(),
 });
 export type TripItem = z.infer<typeof tripItemSchema>;
+
+// GET /v1/trips/:id (R4.6 to R4.11). Totals leave out `unavailable` items.
+export const tripDetailItemSchema = z.object({
+  id: z.uuid(),
+  listing_id: z.uuid(),
+  title: z.string(),
+  photo_url: z.url().nullable(),
+  mark: z.enum(['available', 'unavailable', 'price_changed']),
+  daily_price_cents: z.number().int().nullable(),
+  daily_price_cents_at_add: z.number().int(),
+  line_total_cents: z.number().int().nullable(),
+  deposit_cents: z.number().int(),
+});
+export const tripGroupSchema = z.object({
+  owner: z.object({
+    id: z.uuid(),
+    display_name: z.string().nullable(),
+    rating_avg: z.number().nullable(),
+    rating_count: z.number().int(),
+  }),
+  start_date: z.iso.date(),
+  end_date: z.iso.date(),
+  days: z.number().int(),
+  distance_m: z.number().int().nullable(),
+  price_cents: z.number().int(),
+  deposit_cents: z.number().int(),
+  items: z.array(tripDetailItemSchema),
+});
+export type TripGroup = z.infer<typeof tripGroupSchema>;
+export const tripDetailSchema = tripSchema.extend({
+  currency: z.literal('CAD'),
+  price_cents: z.number().int(),
+  deposit_cents: z.number().int(),
+  groups: z.array(tripGroupSchema),
+});
+export type TripDetail = z.infer<typeof tripDetailSchema>;

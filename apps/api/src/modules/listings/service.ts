@@ -322,6 +322,24 @@ export async function listingFacts(
   );
 }
 
+// R4.7: which of these items have a day taken by any block. Dates are inclusive.
+export async function takenItemIds(
+  tx: Tx,
+  items: { id: string; listing_id: string; start_date: string; end_date: string }[],
+): Promise<Set<string>> {
+  if (items.length === 0) return new Set();
+  const values = items.map(
+    (i) => sql`(${i.id}::uuid, ${i.listing_id}::uuid, ${i.start_date}::date, ${i.end_date}::date)`,
+  );
+  const { rows } = await tx.execute<{ id: string }>(sql`
+    select i.id
+    from (values ${sql.join(values, sql`, `)}) as i (id, listing_id, start_date, end_date)
+    where exists (
+      select 1 from public.availability_blocks b
+      where b.listing_id = i.listing_id and b.period && daterange(i.start_date, i.end_date, '[]'))`);
+  return new Set(rows.map((r) => r.id));
+}
+
 async function checkCategory(tx: Tx, categoryId: string | null | undefined) {
   if (!categoryId) return;
   const [found] = await tx

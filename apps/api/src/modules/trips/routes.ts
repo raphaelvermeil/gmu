@@ -10,7 +10,7 @@ import type { Db } from '../../db/client.ts';
 import type { AuthVariables } from '../../http/auth.ts';
 import { jsonBody, queryParams, uuidParam } from '../../http/errors.ts';
 import type { Storage } from '../../platform/storage.ts';
-import { addTripItem, createTrip, listTrips, removeTripItem } from './service.ts';
+import { addTripItem, createTrip, getTrip, listTrips, removeTripItem } from './service.ts';
 
 // /v1/trips/...: all by the trip's renter (R4.1).
 export function tripRoutes(db: Db, storage: Storage) {
@@ -21,6 +21,10 @@ export function tripRoutes(db: Db, storage: Storage) {
     .get('/', queryParams(listQuerySchema), async (c) =>
       c.json(tripListSchema.parse(await listTrips(db, c.get('userId'), c.req.valid('query')))),
     )
+    .get('/:id', async (c) => {
+      const id = uuidParam(c.req.param('id'));
+      return c.json(await getTrip(db, storage, c.get('userId'), id));
+    })
     .post('/:id/items', jsonBody(addTripItemSchema), async (c) => {
       const id = uuidParam(c.req.param('id'));
       const { item, created } = await db.transaction((tx) =>
