@@ -6,3 +6,8 @@ export function formatDistance(metres: number): string {
 export function addDays(date: string, n: number): string {
   return new Date(Date.parse(date) + n * 86_400_000).toISOString().slice(0, 10);
 }
+
+// Both ends count (G3.4).
+export function countedDays(from: string, to: string): number {
+  return (Date.parse(to) - Date.parse(from)) / 86_400_000 + 1;
+}

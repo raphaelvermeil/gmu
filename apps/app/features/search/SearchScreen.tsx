@@ -12,7 +12,7 @@ import { theme } from '../../components/theme';
 import { useSession } from '../../lib/session';
 import { formatCents } from '../listings/format';
 import { useCategories } from '../listings/queries';
-import { addDays, formatDistance } from './format';
+import { addDays, countedDays, formatDistance } from './format';
 import { useOrigin, useSearch, type Filters } from './queries';
 
 const MAX_DAYS = 30; // G3.4
@@ -111,6 +111,7 @@ function FilterBar({
     from: null,
     to: null,
   });
+  const days = dates.from && dates.to ? countedDays(dates.from, dates.to) : 0;
   const submit = () => onChange({ ...filters, q: q.trim() });
 
   return (
@@ -127,21 +128,34 @@ function FilterBar({
       <Button
         title={filters.range ? `${filters.range.from} to ${filters.range.to}` : 'Any dates'}
         variant="secondary"
-        onPress={() => setOpen(!open)}
+        onPress={() => {
+          setDates(filters.range ?? { from: null, to: null });
+          setOpen(!open);
+        }}
       />
       {open ? (
-        <DateRangePicker
-          value={dates}
-          minDate={addDays(todayInToronto(), 1)}
-          maxDays={MAX_DAYS}
-          onChange={(next) => {
-            setDates(next);
-            if (next.from && next.to) {
-              onChange({ ...filters, range: { from: next.from, to: next.to } });
+        <>
+          <Text style={styles.muted}>
+            Tap the first and the last day. For one day, tap it twice.
+          </Text>
+          <DateRangePicker
+            value={dates}
+            minDate={addDays(todayInToronto(), 1)}
+            onChange={setDates}
+          />
+          {days > MAX_DAYS ? (
+            <Text style={styles.error}>Choose {MAX_DAYS} days at most.</Text>
+          ) : null}
+          <Button
+            title="Apply dates"
+            disabled={days === 0 || days > MAX_DAYS}
+            onPress={() => {
+              if (!dates.from || !dates.to) return;
+              onChange({ ...filters, range: { from: dates.from, to: dates.to } });
               setOpen(false);
-            }
-          }}
-        />
+            }}
+          />
+        </>
       ) : null}
       {filters.range ? (
         <Button
@@ -235,5 +249,6 @@ const styles = StyleSheet.create({
   thumb: { width: 80, height: 80, borderRadius: theme.radius.sm },
   grow: { flex: 1, gap: theme.space.xs },
   name: { fontSize: theme.font.body, fontWeight: '600', color: theme.color.text },
+  error: { color: theme.color.danger },
   muted: { color: theme.color.muted, fontSize: theme.font.small },
 });

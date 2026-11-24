@@ -3,10 +3,10 @@ import DateTimePicker, { type DateType } from 'react-native-ui-datepicker';
 import { theme } from './theme';
 
 type Range = { from: string | null; to: string | null };
-type Props = { value: Range; minDate: string; maxDays: number; onChange: (range: Range) => void };
+type Props = { value: Range; minDate: string; onChange: (range: Range) => void };
 
 // Calendar dates in and out, as YYYY-MM-DD (invariant 9): never a timestamp.
-export function DateRangePicker({ value, minDate, maxDays, onChange }: Props) {
+export function DateRangePicker({ value, minDate, onChange }: Props) {
   return (
     <View style={styles.wrap}>
       <DateTimePicker
@@ -14,7 +14,9 @@ export function DateRangePicker({ value, minDate, maxDays, onChange }: Props) {
         startDate={value.from ?? undefined}
         endDate={value.to ?? undefined}
         minDate={minDate}
-        max={maxDays - 1} // the package compares the difference; both ends count here
+        // A tap on a complete range starts a new one. No `max`: it makes the package clear
+        // the range when one day is tapped twice, so the caller checks the length.
+        allowRangeReset
         onChange={({ startDate, endDate }) =>
           onChange({ from: toIso(startDate), to: toIso(endDate) })
         }

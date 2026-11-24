@@ -34,7 +34,13 @@ export const searchQuerySchema = z
     from: z.iso.date().optional(),
     to: z.iso.date().optional(),
     category: z.uuid().optional(),
-    q: z.string().trim().max(200).optional(),
+    // Postgres text cannot hold a NUL byte.
+    q: z
+      .string()
+      .trim()
+      .max(200)
+      .refine((q) => !q.includes('\0'), { message: 'q holds a NUL byte' })
+      .optional(),
     sort: z.enum(['distance', 'price']).default('distance'),
     cursor: z.string().optional(),
     limit: queryNumber.pipe(z.number().int().min(1).max(30)).default(30), // R3.7
@@ -74,6 +80,7 @@ export const searchResponseSchema = z.object({
 // GET /v1/listings/:id/availability (R3.10, G3.6). Dates are inclusive.
 export const availabilityQuerySchema = z
   .object({ from: z.iso.date(), to: z.iso.date() })
+  .refine((v) => v.from >= '0001-01-01', { message: 'from is before year 1' })
   .refine((v) => v.to >= v.from, { message: 'to is before from' })
   .refine((v) => countedDays(v.from, v.to) <= 366, { message: 'the window is over 366 days' });
 export const availabilitySchema = z.object({

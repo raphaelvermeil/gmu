@@ -195,6 +195,7 @@ describe('radius and distance (R3.2, R3.4)', () => {
     ['unknown sort', { sort: 'newest' }],
     ['a category that is not an id', { category: 'camping' }],
     ['a broken cursor', { cursor: 'nope' }],
+    ['a NUL byte in q', { q: 'kay\0' }],
   ] as [string, Query][])('returns 400 for %s', async (_name, query) => {
     const res = await get(searchPath(newOrigin(), query));
     expect(res.status).toBe(400);
@@ -447,6 +448,7 @@ describe('availability (R3.10, G3.6)', () => {
     expect((await get(path(id, '2024-01-01', '2025-01-01'))).status).toBe(400);
     expect((await get(path(id, '2027-01-02', '2027-01-01'))).status).toBe(400);
     expect((await get(`/v1/listings/${id}/availability`)).status).toBe(400);
+    expect((await get(path(id, '0000-01-01', '0000-01-02'))).status).toBe(400); // no year 0 in Postgres
   });
 
   it('returns 404 for a listing that is not active or does not exist, the owner included', async () => {
