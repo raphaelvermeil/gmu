@@ -41,3 +41,22 @@ export const tripListSchema = z.object({
   trips: z.array(tripSchema),
   next_cursor: z.string().nullable(),
 });
+
+// POST /v1/trips/:id/items. Without dates, the trip's (R4.3). The service checks the dates.
+export const addTripItemSchema = z
+  .strictObject({
+    listing_id: z.uuid(),
+    start_date: z.iso.date().optional(),
+    end_date: z.iso.date().optional(),
+  })
+  .refine((v) => (v.start_date === undefined) === (v.end_date === undefined), {
+    message: 'start_date and end_date come together',
+  });
+export type AddTripItem = z.infer<typeof addTripItemSchema>;
+export const tripItemSchema = z.object({
+  id: z.uuid(),
+  listing_id: z.uuid(),
+  start_date: z.iso.date(),
+  end_date: z.iso.date(),
+});
+export type TripItem = z.infer<typeof tripItemSchema>;

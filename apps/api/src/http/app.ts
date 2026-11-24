@@ -63,7 +63,7 @@ export function createApp({
     .route('/me', meRoutes(db, authApi, storage, queue))
     .route('/me', meListingRoutes(db, storage))
     .route('/listings', listingRoutes(db, storage, queue))
-    .route('/trips', tripRoutes(db));
+    .route('/trips', tripRoutes(db, storage));
 
   return app.route('/v1', open).route('/v1', v1);
 }

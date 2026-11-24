@@ -277,6 +277,51 @@ export async function listMyListings(tx: Tx, storage: Storage, userId: string, p
   return { listings: result, next_cursor };
 }
 
+// For other modules, which do not read `listings` themselves: any status, public point only.
+export type ListingFacts = {
+  id: string;
+  owner_id: string;
+  pickup_location_id: string | null;
+  title: string;
+  status: Listing['status'];
+  daily_price_cents: number | null;
+  deposit_cents: number;
+  photo_url: string | null;
+  distance_m: number | null; // null without an origin or a public point
+};
+
+export async function listingFacts(
+  tx: Tx,
+  storage: Storage,
+  ids: string[],
+  origin: Point | null,
+): Promise<Map<string, ListingFacts>> {
+  if (ids.length === 0) return new Map();
+  const distance = origin
+    ? sql`extensions.st_distance(l.public_point, ${toGeography(origin)})`
+    : sql`null::float8`;
+  const { rows } = await tx.execute<
+    Omit<ListingFacts, 'photo_url'> & { photo_path: string | null }
+  >(sql`
+    select l.id, l.owner_id, l.pickup_location_id, l.title, l.status, l.daily_price_cents,
+           l.deposit_cents, ${distance} as distance_m,
+           (select i.storage_path from public.listing_images i
+            where i.listing_id = l.id and i.verified_at is not null
+            order by i.position, i.id limit 1) as photo_path
+    from public.listings l
+    where l.id in (${sql.join(ids.map((id) => sql`${id}::uuid`), sql`, `)})`);
+  return new Map(
+    rows.map(({ photo_path, ...row }) => [
+      row.id,
+      {
+        ...row,
+        photo_url: photo_path ? storage.publicUrl(LISTING_PHOTOS_BUCKET, photo_path) : null,
+        distance_m: row.distance_m === null ? null : Math.round(row.distance_m),
+      },
+    ]),
+  );
+}
+
 async function checkCategory(tx: Tx, categoryId: string | null | undefined) {
   if (!categoryId) return;
   const [found] = await tx
