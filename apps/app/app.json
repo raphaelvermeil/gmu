@@ -24,7 +24,7 @@
       [
         "expo-location",
         {
-          "locationWhenInUsePermission": "Gear uses your location to set where renters pick up your gear. Renters only see a point about 1 km away."
+          "locationWhenInUsePermission": "Gear uses your location to find gear near you and to set where renters pick up your gear. Renters only see a point about 1 km away."
         }
       ]
     ],

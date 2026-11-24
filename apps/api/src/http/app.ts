@@ -7,6 +7,7 @@ import type { Db } from '../db/client.ts';
 import { ensureUser } from '../modules/identity/service.ts';
 import { meRoutes } from '../modules/identity/routes.ts';
 import { listingRoutes, meListingRoutes, publicListingRoutes } from '../modules/listings/routes.ts';
+import { searchRoutes } from '../modules/search/routes.ts';
 import type { AuthApi } from '../platform/auth.ts';
 import type { Queue } from '../platform/queue.ts';
 import type { Storage } from '../platform/storage.ts';
@@ -52,7 +53,9 @@ export function createApp({
   });
 
   // Open to anyone. Registered first, so these answer before the sign-in check below.
-  const open = publicListingRoutes(db, storage, verifyToken);
+  const open = new Hono()
+    .route('/', publicListingRoutes(db, storage, verifyToken))
+    .route('/', searchRoutes(db, storage));
 
   const v1 = new Hono()
     .use(requireAuth(verifyToken, (userId) => ensureUser(db, userId)))
