@@ -7,6 +7,7 @@ import { ApiRequestError } from '../../lib/api';
 import { useSession } from '../../lib/session';
 import { conditionLabel, formatCents } from '../listings/format';
 import { useCategories, useListing } from '../listings/queries';
+import { AddToTrip } from '../trips/AddToTrip';
 import { addDays } from './format';
 import { useAvailability } from './queries';
 
@@ -49,6 +50,9 @@ export function PublicListingScreen({ id }: { id: string }) {
           .join(' · ')}
       </Text>
       <Text style={styles.text}>{l.description}</Text>
+      {l.status === 'active' && session?.user.id !== l.owner_id ? (
+        <AddToTrip listingId={l.id} />
+      ) : null}
       {l.status === 'active' ? <Availability id={l.id} /> : null}
     </Screen>
   );

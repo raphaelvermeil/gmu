@@ -1,5 +1,5 @@
-import { todayInToronto, type SearchResult } from '@gear/shared';
-import { Link, useRouter } from 'expo-router';
+import { todayInToronto, type SearchResult, type Trip } from '@gear/shared';
+import { Link, useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
 import { FlatList, Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -12,21 +12,38 @@ import { theme } from '../../components/theme';
 import { useSession } from '../../lib/session';
 import { formatCents } from '../listings/format';
 import { useCategories } from '../listings/queries';
+import { useTrip } from '../trips/queries';
 import { addDays, countedDays, formatDistance } from './format';
 import { useOrigin, useSearch, type Filters } from './queries';
 
 const MAX_DAYS = 30; // G3.4
 
+// `trip` in the URL searches with that trip's dates and starting point (G4.13).
 export function SearchScreen() {
+  const { session, loading } = useSession();
+  const { trip: tripId } = useLocalSearchParams<{ trip?: string }>();
+  const trip = useTrip(session ? tripId : undefined);
+  if (tripId && (loading || (session && trip.isPending))) return <Loading />;
+  if (tripId && session && trip.isError && !trip.data) {
+    return <ErrorState message="Could not load this trip." onRetry={() => void trip.refetch()} />;
+  }
+  return <Search key={trip.data?.id} trip={trip.data} />;
+}
+
+function Search({ trip }: { trip: Trip | undefined }) {
   const { session } = useSession();
   const [filters, setFilters] = useState<Filters>({
     q: '',
     category: null,
-    range: null,
+    range:
+      trip && trip.start_date > todayInToronto()
+        ? { from: trip.start_date, to: trip.end_date }
+        : null,
     sort: 'distance',
   });
-  const origin = useOrigin();
-  const results = useSearch(origin.data, filters);
+  const tripOrigin = trip?.origin_point;
+  const origin = useOrigin(!tripOrigin);
+  const results = useSearch(tripOrigin ?? origin.data, filters);
   const items = results.data?.pages.flatMap((p) => p.listings) ?? [];
 
   return (
@@ -34,7 +51,7 @@ export function SearchScreen() {
       <FlatList
         data={items}
         keyExtractor={(l) => l.id}
-        renderItem={({ item }) => <Result listing={item} />}
+        renderItem={({ item }) => <Result listing={item} tripId={trip?.id} />}
         contentContainerStyle={styles.content}
         keyboardShouldPersistTaps="handled"
         ListHeaderComponent={
@@ -42,6 +59,14 @@ export function SearchScreen() {
             <Text style={styles.title} accessibilityRole="header">
               Find gear near you
             </Text>
+            {trip ? (
+              <Link
+                href={{ pathname: '/trips/[id]', params: { id: trip.id } }}
+                style={styles.link}
+              >
+                Searching for {trip.name}. Back to the trip
+              </Link>
+            ) : null}
             {session ? (
               <View style={styles.links}>
                 <Link href="/trips" style={styles.link}>
@@ -63,7 +88,7 @@ export function SearchScreen() {
           </View>
         }
         ListEmptyComponent={
-          origin.isError || origin.data === null ? (
+          !tripOrigin && (origin.isError || origin.data === null) ? (
             <ErrorState
               message={
                 origin.isError
@@ -201,13 +226,18 @@ function FilterBar({
   );
 }
 
-function Result({ listing: l }: { listing: SearchResult }) {
+function Result({ listing: l, tripId }: { listing: SearchResult; tripId: string | undefined }) {
   const router = useRouter();
   return (
     <Pressable
       accessibilityRole="link"
       style={styles.row}
-      onPress={() => router.push({ pathname: '/listings/[id]', params: { id: l.id } })}
+      onPress={() =>
+        router.push({
+          pathname: '/listings/[id]',
+          params: { id: l.id, ...(tripId ? { trip: tripId } : {}) },
+        })
+      }
     >
       {l.photo_url ? <Image source={{ uri: l.photo_url }} style={styles.thumb} /> : null}
       <View style={styles.grow}>
